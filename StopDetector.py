@@ -99,7 +99,6 @@ class StopDetector:
         us_lights = False
 
         for object in root.findall('object'):
-
             name = object.find('name').text
             if "limit" in name:
                 continue
@@ -121,8 +120,11 @@ class StopDetector:
         else:
             selected = self.check_eu(objects)
 
-        selected_name = selected.name.split("_")[0]
-        self.prev_states.append(selected_name)
+        if selected is not None:
+            selected_name = selected.name.split("_")[0]
+            self.prev_states.append(selected_name)
+        else:
+            self.prev_states.append(None)
 
     def check_eu(self, lights):
         """
@@ -134,7 +136,7 @@ class StopDetector:
         for light in lights:
             if light.area / (self.screen_height * self.screen_width) <= self.light_area_threshold:
                 to_remove.append(light)
-        lights -= to_remove
+        lights = [x for x in lights if x not in to_remove]
 
         # if not working replace with "vertical line check"
         if not lights:
@@ -160,7 +162,7 @@ class StopDetector:
         for light in lights:
             if "group" in light.name:
                 groups.append(light)
-        lights -= groups
+        lights = [x for x in lights if x not in groups]
 
         # single lights being inside of another group
         insiders = []
@@ -169,8 +171,8 @@ class StopDetector:
                 if light.intersect_ratio(group) > self.being_inside_ratio:
                     insiders.append(light)
                     break
-        lights -= insiders
-        lights += groups
+        lights = [x for x in lights if x not in insiders]
+        lights = lights + groups
 
         # minimal distance from center of the screen
         min_dist = self.screen_width * self.screen_height
@@ -194,9 +196,16 @@ class StopDetector:
         if states is None:
             states = self.prev_states
 
+        if len(self.prev_states) > 5:
+            self.prev_states = self.prev_states[-5:]
+
         if len(states) < 3:
             return states[-1]
         else:
+            # None None None
+            if states[-1] is None and states[-2] is None and states[-3] is None:
+                self.prev_states = []
+                return None
             # yellow - red - red
             # yellow - yellow - red
             # green - yellow - red
@@ -206,11 +215,10 @@ class StopDetector:
                 elif states[-2] == "yellow" and (states[-3] == "yellow" or states[-3] == "green"):
                     return "red"
             # green - green - yellow
-            # red - red - yellow
             # green - yellow - yellow
             # red - yellow - yellow
             if states[-1] == "yellow":
-                if (states[-2] == "red" and states[-3] == "red") or (states[-2] == "green" and states[-3] == "green"):
+                if states[-2] == "green" and states[-3] == "green":
                     return "yellow"
                 elif states[-2] == "yellow" and (states[-3] == "red" or states[-3] == "green"):
                     return "yellow"
@@ -228,12 +236,12 @@ class StopDetector:
                 last[states[-i]] += 1
             # all 3 possible states in last 3 states
             if max(last.values()) - min(last.values()) == 0:
-                if len(states) > 4:
+                if len(states) > 3:
                     # the most common state in last 4 is -4 state
                     return states[-4]
                 else:
                     # cannot detect current light
-                    return "red"
+                    return "green"
             else:
                 return max(last, key=last.get)
 
@@ -245,7 +253,8 @@ class StopDetector:
         """
         self.check_light(xml_file)
         actual = self.detect_actual()
-        if actual is "red":
+        print(actual)
+        if actual == "red":
             return True
         else:
             return False
