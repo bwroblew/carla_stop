@@ -2,6 +2,11 @@ import xml.etree.ElementTree as ET
 import math
 import random
 
+default_classes_dict = {1: {'id': 1, 'name': 'Green'},
+                        2: {'id': 2, 'name': 'Red'},
+                        3: {'id': 3, 'name': 'Yellow'},
+                        4: {'id': 4, 'name': 'off'}}
+
 class BndBox:
 
     def __init__(self, name, xmin, xmax, ymin, ymax):
@@ -84,29 +89,28 @@ class StopDetector:
         self.not_seen_threshold = 3
         self.prev_states = []
 
-    def check_light(self, xml_file):
+    def check_light(self, boxes, classes, classes_dict):
         """
         Detect light state based on current frame
-        :param xml_file: xml file with boxes
+        :param boxes: list of lists - representing list of boxes (y1, x1, y2, x2)
+        :param classes: list of classes
+        :param classes_dict: dict describing each class, see default_classes_dict
         :return: None
         """
         objects = []
-        root = ET.parse(xml_file).getroot()
-
-        self.screen_width = int(root.find('size/width').text)
-        self.screen_height = int(root.find('size/height').text)
 
         us_lights = False
 
-        for object in root.findall('object'):
-            name = object.find('name').text
+        for i in range(len(boxes)):
+            ymin = boxes[i][0] * self.screen_height
+            xmin = boxes[i][1] * self.screen_width
+            ymax = boxes[i][2] * self.screen_height
+            xmax = boxes[i][3] * self.screen_width
+            name = classes_dict[classes[i]]["name"]
+
             if "limit" in name:
                 continue
 
-            xmin = int(object.find('bndbox/xmin').text)
-            ymin = int(object.find('bndbox/ymin').text)
-            xmax = int(object.find('bndbox/xmax').text)
-            ymax = int(object.find('bndbox/ymax').text)
             objects.append(BndBox(name, xmin, xmax, ymin, ymax))
 
             if "group" in name:
@@ -206,32 +210,32 @@ class StopDetector:
             if states[-1] is None and states[-2] is None and states[-3] is None:
                 self.prev_states = []
                 return None
-            # yellow - red - red
-            # yellow - yellow - red
-            # green - yellow - red
-            if states[-1] == "red":
-                if states[-2] == "red" and states[-3] == "yellow":
-                    return "red"
-                elif states[-2] == "yellow" and (states[-3] == "yellow" or states[-3] == "green"):
-                    return "red"
-            # green - green - yellow
-            # green - yellow - yellow
-            # red - yellow - yellow
-            if states[-1] == "yellow":
-                if states[-2] == "green" and states[-3] == "green":
-                    return "yellow"
-                elif states[-2] == "yellow" and (states[-3] == "red" or states[-3] == "green"):
-                    return "yellow"
-            # yellow - green - green
-            # yellow - yellow - green
-            # red - yellow - green
-            if states[-1] == "green":
-                if (states[-2] == "green" or states[-2] == "yellow") and states[-3] == "yellow":
-                    return "green"
-                if states[-2] == "yellow" and states[-3] == "red":
-                    return "green"
+            # Yellow - Red - Red
+            # Yellow - Yellow - Red
+            # Green - Yellow - Red
+            if states[-1] == "Red":
+                if states[-2] == "Red" and states[-3] == "Yellow":
+                    return "Red"
+                elif states[-2] == "Yellow" and (states[-3] == "Yellow" or states[-3] == "Green"):
+                    return "Red"
+            # Green - Green - Yellow
+            # Green - Yellow - Yellow
+            # Red - Yellow - Yellow
+            if states[-1] == "Yellow":
+                if states[-2] == "Green" and states[-3] == "Green":
+                    return "Yellow"
+                elif states[-2] == "Yellow" and (states[-3] == "Red" or states[-3] == "Green"):
+                    return "Yellow"
+            # Yellow - Green - Green
+            # Yellow - Yellow - Green
+            # Red - Yellow - Green
+            if states[-1] == "Green":
+                if (states[-2] == "Green" or states[-2] == "Yellow") and states[-3] == "Yellow":
+                    return "Green"
+                if states[-2] == "Yellow" and states[-3] == "Red":
+                    return "Green"
 
-            last = {"green": 0, "yellow": 0, "red": 0}
+            last = {"Green": 0, "Yellow": 0, "Red": 0}
             for i in range(1, 4):
                 last[states[-i]] += 1
             # all 3 possible states in last 3 states
@@ -241,20 +245,24 @@ class StopDetector:
                     return states[-4]
                 else:
                     # cannot detect current light
-                    return "green"
+                    return "Green"
             else:
                 return max(last, key=last.get)
 
-    def light_stop(self, xml_file):
+    def light_stop(self, boxes, classes, classes_dict=None):
         """
         Method checking if vehicle should stop based on current traffic light conditions
-        :param xml_file: file with classified boxes
+        :param boxes: list of lists - representing list of boxes (y1, x1, y2, x2)
+        :param classes: list of classes
+        :param classes_dict: dict describing each class, see default_classes_dict
         :return: True if vehicle must stop or False if not
         """
-        self.check_light(xml_file)
+        if classes_dict is None:
+            classes_dict = default_classes_dict
+        self.check_light(boxes, classes, classes_dict)
         actual = self.detect_actual()
         print(actual)
-        if actual == "red":
+        if actual == "Red":
             return True
         else:
             return False
