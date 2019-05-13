@@ -225,10 +225,10 @@ class StopDetector:
                     return "Yellow"
                 elif states[-2] == "Yellow" and states[-3] == "Green":
                     return "Yellow"
-            # red - red - green
-            if states[-1] == "green":
-                if states[-2] == "red" and states[-3] == "red":
-                    return "green"
+            # Red - Red - Green
+            if states[-1] == "Green":
+                if states[-2] == "Red" and states[-3] == "Red":
+                    return "Green"
 
             last = {"Green": 0, "Yellow": 0, "Red": 0}
             for i in range(1, 4):
