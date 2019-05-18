@@ -255,3 +255,19 @@ class StopDetector:
         else:
             return False
 
+    def states_from_series(self, chain):
+        """
+        Method checking light states from a chain of xml files.
+        :param chain: list og xml files
+        """
+        self.prev_states = []
+        real = []
+        ded = []
+        for xml_file in chain:
+            self.check_light(xml_file)
+            actual = self.detect_actual()
+            ded.append(actual)
+            real.append(self.prev_states[-1])
+        print(real)
+        print(ded)
+
