@@ -216,6 +216,7 @@ class StopDetector:
             if states[-1] is None and states[-2] is None and states[-3] is None:
                 self.prev_states = []
                 return None
+            
             # yellow - red - red
             # yellow - yellow - red
             # green - yellow - red
