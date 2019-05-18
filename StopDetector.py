@@ -1,11 +1,17 @@
-import xml.etree.ElementTree as ET
 import math
-import random
 
-default_classes_dict = {1: {'id': 1, 'name': 'Green'},
-                        2: {'id': 2, 'name': 'Red'},
-                        3: {'id': 3, 'name': 'Yellow'},
-                        4: {'id': 4, 'name': 'off'}}
+default_classes_list = [
+   {'id': 1, 'name': 'red'},
+   {'id': 2, 'name': 'green'},
+   {'id': 3, 'name': 'yellow'},
+   {'id': 4, 'name': 'red_group'},
+   {'id': 5, 'name': 'green_group'},
+   {'id': 6, 'name': 'limit_30'},
+   {'id': 7, 'name': 'limit_60'},
+   {'id': 8, 'name': 'limit_90'},
+   {'id': 9, 'name': 'yellow_group'}
+]
+
 
 class BndBox:
 
@@ -89,12 +95,12 @@ class StopDetector:
         self.not_seen_threshold = 3
         self.prev_states = []
 
-    def check_light(self, boxes, classes, classes_dict):
+    def check_light(self, boxes, classes, classes_list):
         """
         Detect light state based on current frame
         :param boxes: list of lists - representing list of boxes (y1, x1, y2, x2)
         :param classes: list of classes
-        :param classes_dict: dict describing each class, see default_classes_dict
+        :param classes_list: dict describing each class, see default_classes_dict
         :return: None
         """
         objects = []
@@ -106,7 +112,7 @@ class StopDetector:
             xmin = boxes[i][1] * self.screen_width
             ymax = boxes[i][2] * self.screen_height
             xmax = boxes[i][3] * self.screen_width
-            name = classes_dict[classes[i]]["name"]
+            name = classes_list[classes[i] - 1]["name"]
 
             if "limit" in name:
                 continue
@@ -210,27 +216,27 @@ class StopDetector:
             if states[-1] is None and states[-2] is None and states[-3] is None:
                 self.prev_states = []
                 return None
-            # Yellow - Red - Red
-            # Yellow - Yellow - Red
-            # Green - Yellow - Red
-            if states[-1] == "Red":
-                if states[-2] == "Red" and states[-3] == "Yellow":
-                    return "Red"
-                elif states[-2] == "Yellow" and (states[-3] == "Yellow" or states[-3] == "Green"):
-                    return "Red"
-            # Green - Green - Yellow
-            # Green - Yellow - Yellow
-            if states[-1] == "Yellow":
-                if states[-2] == "Green" and states[-3] == "Green":
-                    return "Yellow"
-                elif states[-2] == "Yellow" and states[-3] == "Green":
-                    return "Yellow"
+            # yellow - red - red
+            # yellow - yellow - red
+            # green - yellow - red
+            if states[-1] == "red":
+                if states[-2] == "red" and states[-3] == "yellow":
+                    return "red"
+                elif states[-2] == "yellow" and (states[-3] == "yellow" or states[-3] == "green"):
+                    return "red"
+            # green - green - yellow
+            # green - yellow - yellow
+            if states[-1] == "yellow":
+                if states[-2] == "green" and states[-3] == "green":
+                    return "yellow"
+                elif states[-2] == "yellow" and states[-3] == "green":
+                    return "yellow"
             # red - red - green
             if states[-1] == "green":
                 if states[-2] == "red" and states[-3] == "red":
                     return "green"
 
-            last = {"Green": 0, "Yellow": 0, "Red": 0}
+            last = {"green": 0, "yellow": 0, "red": 0}
             for i in range(1, 4):
                 if states[-i] is not None:
                     last[states[-i]] += 1
@@ -241,24 +247,24 @@ class StopDetector:
                     return states[-4]
                 else:
                     # cannot detect current light
-                    return "Green"
+                    return "green"
             else:
                 return max(last, key=last.get)
 
-    def light_stop(self, boxes, classes, classes_dict=None):
+    def light_stop(self, boxes, classes, classes_list=None):
         """
         Method checking if vehicle should stop based on current traffic light conditions
         :param boxes: list of lists - representing list of boxes (y1, x1, y2, x2)
         :param classes: list of classes
-        :param classes_dict: dict describing each class, see default_classes_dict
+        :param classes_list: list describing each class, see default_classes_list
         :return: True if vehicle must stop or False if not
         """
-        if classes_dict is None:
-            classes_dict = default_classes_dict
-        self.check_light(boxes, classes, classes_dict)
+        if classes_list is None:
+            classes_list = default_classes_list
+        self.check_light(boxes, classes, classes_list)
         actual = self.detect_actual()
         print(actual)
-        if actual == "Red":
+        if actual == "red":
             return True
         else:
             return False
